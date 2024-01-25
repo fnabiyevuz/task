@@ -124,28 +124,24 @@ def send_sms_with_get_sms(phone, message):
 
 
 def write_sms_log(response, phone, message, provider):
-    if response.status_code == 200:
-        SmsLog.objects.create(
-            provider=provider,
-            phone=phone,
-            message=message,
-            content=response.content,
-            is_send=True
-        )
-
-        sms_proviver = SmsSetting.objects.first()
-        if provider != sms_proviver.provider:
-            sms_proviver.provider = provider
-            sms_proviver.save()
-
-        return True
+    is_send = response.status_code == 200
 
     SmsLog.objects.create(
         provider=provider,
         phone=phone,
         message=message,
         content=response.content,
-        is_send=False
+        is_send=is_send
     )
 
-    return False
+    if is_send:
+        update_sms_provider(provider)
+
+    return is_send
+
+
+def update_sms_provider(provider):
+    sms_provider = SmsSetting.objects.first()
+    if provider != sms_provider.provider:
+        sms_provider.provider = provider
+        sms_provider.save()
