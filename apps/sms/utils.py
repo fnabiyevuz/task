@@ -8,52 +8,25 @@ from django.conf import settings
 from apps.sms.models import SmsProviderType, SmsSetting, SmsLog
 
 
+def ordered_provider(provider):
+    return [provider] + [provider_type for provider_type, _ in SmsProviderType.choices if provider != provider_type]
+
+
 def send_sms(message, phone):
+    send_by_provider = {
+        1: send_sms_with_eskiz,
+        2: send_sms_with_play_mobile,
+        3: send_sms_with_get_sms,
+    }
+
     sms_provider = SmsSetting.objects.first() or SmsSetting.objects.create(provider=SmsProviderType.ESKIZ)
     provider = sms_provider.provider
 
-    if provider == SmsProviderType.ESKIZ:
+    providers = ordered_provider(provider)
 
-        eskiz_send = send_sms_with_eskiz(phone, message)
-        if eskiz_send:
-            return True
-
-        play_mobile_send = send_sms_with_play_mobile(phone, message)
-        if play_mobile_send:
-            return True
-
-        get_sms_send = send_sms_with_get_sms(phone, message)
-        if get_sms_send:
-            return True
-
-        return False
-
-    elif provider == SmsProviderType.PLAY_MOBILE:
-
-        play_mobile_send = send_sms_with_play_mobile(phone, message)
-        if play_mobile_send:
-            return True
-
-        get_sms_send = send_sms_with_get_sms(phone, message)
-        if get_sms_send:
-            return True
-
-        eskiz_send = send_sms_with_eskiz(phone, message)
-        if eskiz_send:
-            return True
-
-        return False
-
-    elif provider == SmsProviderType.GET_SMS:
-        get_sms_send = send_sms_with_get_sms(phone, message)
-        if get_sms_send:
-            return True
-        eskiz_send = send_sms_with_eskiz(phone, message)
-        if eskiz_send:
-            return True
-
-        play_mobile_send = send_sms_with_play_mobile(phone, message)
-        if play_mobile_send:
+    for provider in providers:
+        is_send = send_by_provider[provider](phone, message)
+        if is_send:
             return True
 
     return False
